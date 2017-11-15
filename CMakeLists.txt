@@ -56,7 +56,13 @@ SET(LUAJIT_LIBS
 	luajit-5.1
 )
 
+SET(MOONSTATE_LIBS
+	MoonState
+)
+
 SET(ALL_LIBS
+	-Wl,--whole-archive
+	${MOONSTATE_LIBS}
 	-Wl,--whole-archive
 	${LUAJIT_LIBS}
 	-Wl,--start-group ${DPDK_LIBS} numa -Wl,--end-group
@@ -81,6 +87,7 @@ INCLUDE_DIRECTORIES(
 LINK_DIRECTORIES(
 	${CMAKE_CURRENT_SOURCE_DIR}/deps/dpdk/x86_64-native-linuxapp-gcc/lib
 	${CMAKE_CURRENT_SOURCE_DIR}/deps/luajit/usr/local/lib
+	${CMAKE_CURRENT_SOURCE_DIR}/deps/MoonState/build
 )
 
 IF(LIBMOON_BUILD_LIBRARY)
