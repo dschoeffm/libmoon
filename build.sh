@@ -50,14 +50,6 @@ git submodule update --init --recursive --remote
 NUM_CPUS=$(cat /proc/cpuinfo  | grep "processor\\s: " | wc -l)
 
 (
-cd deps/MoonState
-mkdir -p build
-cd build
-cmake ..
-make -j $NUM_CPUS
-)
-
-(
 cd deps/luajit
 make -j $NUM_CPUS BUILDMODE=static 'CFLAGS=-DLUAJIT_NUMMODE=2 -DLUAJIT_ENABLE_LUA52COMPAT'
 make install DESTDIR=$(pwd)
@@ -75,6 +67,15 @@ if ${MLX4} ; then
 fi
 make -j $NUM_CPUS O=x86_64-native-linuxapp-gcc
 )
+
+ (
+cd deps/MoonState
+mkdir -p build
+cd build
+cmake -DDPDK_INCLUDE_DIR=../dpdk/x86_64-native-linuxapp-gcc/include ..
+make -j $NUM_CPUS
+)
+
 
 (
 cd lua/lib/turbo
