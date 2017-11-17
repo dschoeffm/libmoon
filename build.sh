@@ -72,7 +72,7 @@ make -j $NUM_CPUS O=x86_64-native-linuxapp-gcc
 cd deps/MoonState
 mkdir -p build
 cd build
-cmake -DDPDK_INCLUDE_DIR=../dpdk/x86_64-native-linuxapp-gcc/include ..
+cmake -DCMAKE_BUILD_TYPE=DEBUG -DDPDK_INCLUDE_DIR=../dpdk/x86_64-native-linuxapp-gcc/include ..
 make -j $NUM_CPUS
 )
 

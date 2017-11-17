@@ -5,11 +5,14 @@ local device = require "device"
 local stats  = require "stats"
 local lacp   = require "proto.lacp"
 local helloBye = require "helloBye"
+local arp    = require "proto.arp"
+
+-- IP of this host
+local RX_IP		= "192.168.0.1"
 
 function configure(parser)
 	parser:argument("dev", "Devices to use."):args("+"):convert(tonumber)
 	parser:option("-t --threads", "Number of threads per device."):args(1):convert(tonumber):default(1)
-	parser:flag("-l --lacp", "Try to setup an LACP channel.")
 	return parser:parse()
 end
 
@@ -18,32 +21,31 @@ function master(args)
 	for i, dev in ipairs(args.dev) do
 		local dev = device.config{
 			port = dev,
-			rxQueues = args.threads + (args.lacp and 1 or 0),
-			txQueues = args.threads + (args.lacp and 1 or 0),
+			rxQueues = args.threads + 1,
+			txQueues = args.threads + 1,
 			rssQueues = args.threads
 		}
-		-- last queue for lacp
-		if args.lacp then
-			table.insert(lacpQueues, {rxQueue = dev:getRxQueue(args.threads), txQueue = dev:getTxQueue(args.threads)})
-		end
 		args.dev[i] = dev
 	end
 	device.waitForLinks()
-
-	-- setup lacp if requested
-	if args.lacp then
-		lacp.startLacpTask("bond0", lacpQueues)
-		lacp.waitForLink("bond0")
-	end
 
 	-- print statistics
 	stats.startStatsTask{devices = args.dev}
 
 	for i, dev in ipairs(args.dev) do
 		for i = 1, args.threads do
-			lm.startTask("reflector", dev:getRxQueue(i - 1), dev:getTxQueue(i - 1))
+			lm.startTask("reflector", dev:getRxQueue(i-1), dev:getTxQueue(i-1))
 		end
 	end
+
+	for i, dev in ipairs(args.dev) do
+		arp.startArpTask{
+			-- run ARP on both ports
+			{ rxQueue = dev:getRxQueue(args.threads), txQueue = dev:getTxQueue(args.threads),
+				ips = RX_IP }
+		}
+	end
+
 	lm.waitForTasks()
 end
 
@@ -76,7 +78,12 @@ function reflector(rxQ, txQ)
 			end
 		end
 
-		txQ:sendN(sendBufs, sendBufsCount)
+		if sendBufsCount > 0 then
+		--	sendBufs:offloadIPChecksums(true, 14,20,1)
+		--	sendBufs:offloadUdpChecksums(true)
+
+			txQ:sendN(sendBufs, sendBufsCount)
+		end
 	end
 end
 

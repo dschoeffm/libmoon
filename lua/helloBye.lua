@@ -1,5 +1,6 @@
 local ffi = require "ffi"
 local memory = require "memory"
+local log = require "log"
 
 ffi.cdef[[
 void *HelloByeServer_init();
@@ -20,18 +21,25 @@ end
 function mod.process(obj, inPkts, inCount)
 	ret = {}
 
-	local sendBufs = memory.bufArray(inCount)
-	local freeBufs = memory.bufArray(inCount)
-	local sendBufsCount = ffi.new("unsigned int[1]")
-	local freeBufsCount = ffi.new("unsigned int[1]")
+	if 0 < inCount then
+		log:info("helloBye.process() called (>0 packets)")
 
-	ffi.C.HelloByeServer_process(obj, inPkts, inCount, sendBufs, sendBufsCount,
-	freeBufs, freeBufsCount)
+		local sendBufs = memory.bufArray(inCount)
+		local freeBufs = memory.bufArray(inCount)
+		local sendBufsCount = ffi.new("unsigned int[1]")
+		local freeBufsCount = ffi.new("unsigned int[1]")
 
-	ret.send = sendBufs
-	ret.sendCount = sendBufsCount[0]
+		ffi.C.HelloByeServer_process(obj, inPkts, inCount, sendBufs.array, sendBufsCount,
+		freeBufs.array, freeBufsCount)
 
-	freeBufs:freeAll()
+		sendBufs.size = sendBufsCount[0]
+		ret.send = sendBufs
+		ret.sendCount = sendBufsCount[0]
+
+		freeBufs:freeAll()
+	else
+		ret.sendCount = 0
+	end
 
 	return ret
 end
