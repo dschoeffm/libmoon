@@ -10,6 +10,8 @@ local utils  = require "utils"
 
 -- IP of this host
 local RX_IP		= "192.168.0.1"
+local dstMac		= "0c:c4:7a:c4:66:2c"
+local srcMac		= "0C:C4:7A:C4:66:2D"
 
 function configure(parser)
 	parser:argument("dev", "Devices to use."):args("+"):convert(tonumber)
@@ -57,7 +59,10 @@ end
 function connector(txQ)
 	-- memory pool with default values for all packets, this is our archetype
 	local mempool = memory.createMemPool(function(buf)
-		buf:getUdpPacket():fill{}
+		buf:getUdpPacket():fill{
+			ethSrc = txQ, -- MAC of the tx device
+			ethDst = dstMac
+		}
 	end)
 
 	local port = 1025
@@ -82,12 +87,19 @@ function connector(txQ)
 		local sendBufs = curPkts.send
 		local sendBufsCount = curPkts.sendCount
 
+		local pkt = sendBufs[1]:getEthernetPacket()
+
+		pkt.eth:setDstString(dstMac)
+		pkt.eth:setSrcString(srcMac)
+
 		-- UDP checksums are optional, so using just IPv4 checksums would be sufficient here
 		-- UDP checksum offloading is comparatively slow: NICs typically do not support calculating the pseudo-header checksum so this is done in SW
 		sendBufs:offloadIPChecksums(true)
 		sendBufs:offloadUdpChecksums(true)
 		-- send out all packets and frees old bufs that have been sent
 		txQ:sendN(sendBufs, sendBufsCount)
+
+		lm.sleepMillis(1000)
 	end
 end
 
