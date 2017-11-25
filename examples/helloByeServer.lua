@@ -4,7 +4,7 @@ local memory = require "memory"
 local device = require "device"
 local stats  = require "stats"
 local lacp   = require "proto.lacp"
-local helloBye = require "helloBye"
+local helloBye = require "helloByeServer"
 local arp    = require "proto.arp"
 
 -- IP of this host
