@@ -17,7 +17,6 @@ void *HelloByeClient_process(void *obj, struct rte_mbuf **inPkts, unsigned int i
 	unsigned int *sendCount, unsigned int *freeCount);
 
 void HelloByeClient_free(void *obj);
-};
 
 ]]
 
@@ -28,7 +27,7 @@ function mod.init()
 end
 
 function mod.config(srcIP, dstPort)
-	ffi.C.HelloByeClient_config(utils.parseIP4Address(srcIP), dstPort)
+	ffi.C.HelloByeClient_config(parseIP4Address(srcIP), dstPort)
 end
 
 function mod.process(obj, inPkts, inCount)
@@ -60,8 +59,11 @@ function mod.process(obj, inPkts, inCount)
 	return ret
 end
 
-function mod.connect(obj, dstIP, srcPort)
-	local bufArray = memory.bufArray(1)
+function mod.connect(mempool, obj, dstIP, srcPort)
+
+	local bufArray = mempool:bufArray(1)
+
+	bufArray:alloc(100)
 
 	local sendBufsCount = ffi.new("unsigned int[1]")
 	local freeBufsCount = ffi.new("unsigned int[1]")
@@ -70,11 +72,9 @@ function mod.connect(obj, dstIP, srcPort)
 	freeBufsCount, dstIP, srcPort)
 
 	local sendBufs = memory.bufArray(sendBufsCount[0])
-	sendBufs:alloc(100)
 	local freeBufs = memory.bufArray(freeBufsCount[0])
-	freeBufs:alloc(100)
 
-	ffi.C.HelloByeClient_getPkts(ba, sendBufs.array, freeBufs.array)
+	ffi.C.HelloByeClient_getPkts(bAC, sendBufs.array, freeBufs.array)
 
 	sendBufs.size = sendBufsCount[0]
 

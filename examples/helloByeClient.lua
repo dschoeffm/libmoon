@@ -6,6 +6,7 @@ local stats  = require "stats"
 local lacp   = require "proto.lacp"
 local helloBye = require "helloByeClient"
 local arp    = require "proto.arp"
+local utils  = require "utils"
 
 -- IP of this host
 local RX_IP		= "192.168.0.1"
@@ -21,7 +22,7 @@ function master(args)
 	for i, dev in ipairs(args.dev) do
 		local dev = device.config{
 			port = dev,
-			rxQueues = args.threads + 2,
+			rxQueues = args.threads + 1,
 			txQueues = args.threads + 2,
 			rssQueues = args.threads
 		}
@@ -39,13 +40,13 @@ function master(args)
 	end
 
 	for i, dev in ipairs(args.dev) do
-		lm.startTask("connector", dev:getRxQueue(args.threads), dev:getTxQueue(args.threads))
+		lm.startTask("connector", dev:getTxQueue(args.threads))
 	end
 
 	for i, dev in ipairs(args.dev) do
 		arp.startArpTask{
 			-- run ARP on both ports
-			{ rxQueue = dev:getRxQueue(args.threads+1), txQueue = dev:getTxQueue(args.threads+1),
+			{ rxQueue = dev:getRxQueue(args.threads), txQueue = dev:getTxQueue(args.threads+1),
 				ips = RX_IP }
 		}
 	end
@@ -53,7 +54,7 @@ function master(args)
 	lm.waitForTasks()
 end
 
-function connector(rxQ, txQ)
+function connector(txQ)
 	-- memory pool with default values for all packets, this is our archetype
 	local mempool = memory.createMemPool(function(buf)
 		buf:getUdpPacket():fill{}
@@ -62,29 +63,32 @@ function connector(rxQ, txQ)
 	local port = 1025
 	local state = helloBye.init()
 
-	local dstIP = utils.parseIP("192.168.0.2")
+	-- TODO why doesn't this work?
+	--local dstIP = utils.parseIP4Address("192.168.0.2")
+	local dstIP = 0xc0a80002
 
 	helloBye.config(RX_IP, 1337)
 
 	-- a bufArray is just a list of buffers from a mempool that is processed as a single batch
-	local bufs = mempool:bufArray(1)
 	while lm.running() do -- check if Ctrl+c was pressed
 		-- this actually allocates some buffers from the mempool the array is associated with
 		-- this has to be repeated for each send because sending is asynchronous, we cannot reuse the old buffers here
-		bufs:alloc(100)
 
-		helloBye.connect(state, dstIP, port)
+		local curPkts = helloBye.connect(mempool, state, dstIP, port)
 
 		port = port +1
 
+		-- extract packets from output
+		local sendBufs = curPkts.send
+		local sendBufsCount = curPkts.sendCount
+
 		-- UDP checksums are optional, so using just IPv4 checksums would be sufficient here
 		-- UDP checksum offloading is comparatively slow: NICs typically do not support calculating the pseudo-header checksum so this is done in SW
-		bufs:offloadIPChecksums(true)
-		bufs:offloadUdpChecksums(true)
+		sendBufs:offloadIPChecksums(true)
+		sendBufs:offloadUdpChecksums(true)
 		-- send out all packets and frees old bufs that have been sent
-		queue:send(bufs)
+		txQ:sendN(sendBufs, sendBufsCount)
 	end
-end
 end
 
 function reflector(rxQ, txQ)
