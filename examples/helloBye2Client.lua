@@ -10,8 +10,8 @@ local utils  = require "utils"
 
 -- IP of this host
 local RX_IP		= "192.168.0.1"
-local dstMac		= "0c:c4:7a:c4:66:2c"
-local srcMac		= "0C:C4:7A:C4:66:2D"
+local dstMacStr		= "3C:FD:FE:9E:D6:B8"
+local srcMacStr		= "68:05:CA:32:44:D8"
 
 function configure(parser)
 	parser:argument("dev", "Devices to use."):args("+"):convert(tonumber)
@@ -74,34 +74,43 @@ function connector(txQ)
 
 	helloBye.config(RX_IP, 1337)
 
+	local bSize = 128
+
+	local dstMac = parseMacAddress(dstMacStr, true)
+	local srcMac = parseMacAddress(srcMacStr, true)
+
 	-- a bufArray is just a list of buffers from a mempool that is processed as a single batch
 	while lm.running() do -- check if Ctrl+c was pressed
 		-- this actually allocates some buffers from the mempool the array is associated with
 		-- this has to be repeated for each send because sending is asynchronous, we cannot reuse the old buffers here
 
-		local curPkts = helloBye.connect(mempool, state, dstIP, 1025, ident)
+		local curPkts = helloBye.connect(mempool, state, dstIP, 1025, ident, bSize)
 
 		-- this is 64bit large -> should not wrap around
-		ident = ident +1
+		ident = ident + bSize
 
 		-- extract packets from output
 		local sendBufs = curPkts.send
 		local sendBufsCount = curPkts.sendCount
 
-		local pkt = sendBufs[1]:getEthernetPacket()
+		for i = 1, sendBufsCount do
+			local pkt = sendBufs[i]:getEthernetPacket()
 
-		pkt.eth:setDstString(dstMac)
-		pkt.eth:setSrcString(srcMac)
+			pkt.eth:setDst(dstMac)
+			pkt.eth:setSrc(srcMac)
+		end
 
 		-- UDP checksums are optional, so using just IPv4 checksums would be sufficient here
 		-- UDP checksum offloading is comparatively slow: NICs typically do not support calculating the pseudo-header checksum so this is done in SW
 		sendBufs:offloadIPChecksums(true)
 		sendBufs:offloadUdpChecksums(true)
 		-- send out all packets and frees old bufs that have been sent
+
 		txQ:sendN(sendBufs, sendBufsCount)
 
-		lm.sleepMillis(1000)
+		--lm.sleepMillis(200)
 	end
+
 end
 
 function reflector(rxQ, txQ)

@@ -35,7 +35,7 @@ function mod.process(obj, inPkts, inCount)
 	ret = {}
 
 	if 0 < inCount then
-		log:info("helloByeClient.process() called (>0 packets)")
+--		log:info("helloByeClient.process() called (>0 packets)")
 
 		local sendBufsCount = ffi.new("unsigned int[1]")
 		local freeBufsCount = ffi.new("unsigned int[1]")
@@ -60,29 +60,31 @@ function mod.process(obj, inPkts, inCount)
 	return ret
 end
 
-function mod.connect(mempool, obj, dstIP, srcPort, ident)
-
-	local bufArray = mempool:bufArray(1)
-
+function mod.connect(mempool, obj, dstIP, srcPort, ident, bSize)
+	local bufArray = mempool:bufArray(bSize)
 	bufArray:alloc(100)
 
-	local sendBufsCount = ffi.new("unsigned int[1]")
-	local freeBufsCount = ffi.new("unsigned int[1]")
+	local sendBufsAll = memory.bufArray(bSize)
 
-	local bAC = ffi.C.HelloBye2_Client_connect(obj, bufArray.array, 1, sendBufsCount,
-	freeBufsCount, dstIP, srcPort, ident)
+	for i = 1,bSize do
+		local sendBufsCount = ffi.new("unsigned int[1]")
+		local freeBufsCount = ffi.new("unsigned int[1]")
 
-	local sendBufs = memory.bufArray(sendBufsCount[0])
-	local freeBufs = memory.bufArray(freeBufsCount[0])
+		local bAC = ffi.C.HelloBye2_Client_connect(obj, bufArray.array + (i-1), 1, sendBufsCount,
+		freeBufsCount, dstIP, srcPort, ident +( i-1))
 
-	ffi.C.HelloBye2_Client_getPkts(bAC, sendBufs.array, freeBufs.array)
+		local freeBufs = memory.bufArray(freeBufsCount[0])
 
-	sendBufs.size = sendBufsCount[0]
+		ffi.C.HelloBye2_Client_getPkts(bAC, sendBufsAll.array + (i-1), freeBufs.array)
+
+	end
+
+	sendBufsAll.size = bSize
 
 	ret = {}
 
-	ret.send = sendBufs
-	ret.sendCount = sendBufsCount[0]
+	ret.send = sendBufsAll
+	ret.sendCount = bSize
 
 	return ret
 end
