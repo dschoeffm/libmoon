@@ -45,7 +45,8 @@ done
 # TODO: this should probably be a makefile
 (
 cd $(dirname "${BASH_SOURCE[0]}")
-git submodule update --init --recursive --remote
+git submodule update --init --recursive
+git submodule update --init --recursive --remote deps/MoonState
 
 NUM_CPUS=$(cat /proc/cpuinfo  | grep "processor\\s: " | wc -l)
 
