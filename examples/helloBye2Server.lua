@@ -8,7 +8,7 @@ local helloBye = require "helloBye2Server"
 local arp    = require "proto.arp"
 
 -- IP of this host
-local RX_IP		= "192.168.0.1"
+local RX_IP		= "192.168.0.2"
 
 function configure(parser)
 	parser:argument("dev", "Devices to use."):args("+"):convert(tonumber)
