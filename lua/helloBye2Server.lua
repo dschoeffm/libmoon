@@ -17,7 +17,13 @@ void HelloBye2_Server_free(void *obj);
 local mod = {}
 
 function mod.init()
-	return ffi.C.HelloBye2_Server_init()
+	ret = {}
+	ret.obj = ffi.C.HelloBye2_Server_init()
+	ret.sbc = ffi.new("unsigned int[1]")
+	ret.fbc = ffi.new("unsigned int[1]")
+	ret.fbufs = memory.bufArray(128)
+	ret.fbufsS = 128
+	return ret
 end
 
 function mod.process(obj, inPkts, inCount)
@@ -26,22 +32,23 @@ function mod.process(obj, inPkts, inCount)
 	if 0 < inCount then
 --		log:info("helloBye.process() called (>0 packets)")
 
-		local sendBufsCount = ffi.new("unsigned int[1]")
-		local freeBufsCount = ffi.new("unsigned int[1]")
+		local ba = ffi.C.HelloBye2_Server_process(obj.obj, inPkts, inCount, obj.sbc,
+		obj.fbc)
 
-		local ba = ffi.C.HelloBye2_Server_process(obj, inPkts, inCount, sendBufsCount,
-		freeBufsCount)
+		local sendBufs = memory.bufArray(obj.sbc[0])
 
-		local sendBufs = memory.bufArray(sendBufsCount[0])
-		local freeBufs = memory.bufArray(freeBufsCount[0])
+		if obj.fbc[0] > obj.fbufsS then
+			obj.fbufs = memory.bufArray(obj.fbc[0])
+			obj.fbufsS = obj.fbc[0]
+		end
 
-		ffi.C.HelloBye2_Server_getPkts(ba, sendBufs.array, freeBufs.array)
+		ffi.C.HelloBye2_Server_getPkts(ba, sendBufs.array, obj.fbufs.array)
 
-		sendBufs.size = sendBufsCount[0]
+		sendBufs.size = obj.sbc[0]
 		ret.send = sendBufs
-		ret.sendCount = sendBufsCount[0]
+		ret.sendCount = obj.sbc[0]
 
-		freeBufs:freeAll()
+		obj.fbufs:freeAll()
 	else
 		ret.sendCount = 0
 	end
@@ -50,7 +57,7 @@ function mod.process(obj, inPkts, inCount)
 end
 
 function mod.free(obj)
-	ffi.C.HelloBye2_Server_free(obj)
+	ffi.C.HelloBye2_Server_free(obj.obj)
 end
 
 return mod

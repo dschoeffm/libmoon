@@ -111,6 +111,7 @@ function connector(txQ)
 		--lm.sleepMillis(200)
 	end
 
+	helloBye.free(state)
 end
 
 function reflector(rxQ, txQ)
@@ -149,5 +150,7 @@ function reflector(rxQ, txQ)
 			txQ:sendN(sendBufs, sendBufsCount)
 		end
 	end
+
+	helloBye.free(state)
 end
 
