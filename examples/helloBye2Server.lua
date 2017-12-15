@@ -85,5 +85,7 @@ function reflector(rxQ, txQ)
 			txQ:sendN(sendBufs, sendBufsCount)
 		end
 	end
+
+	helloBye.free(state)
 end
 
