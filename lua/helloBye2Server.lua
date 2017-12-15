@@ -23,6 +23,8 @@ function mod.init()
 	ret.fbc = ffi.new("unsigned int[1]")
 	ret.fbufs = memory.bufArray(128)
 	ret.fbufsS = 128
+	ret.sbufs = memory.bufArray(128)
+	ret.sbufsS = 128
 	return ret
 end
 
@@ -35,17 +37,20 @@ function mod.process(obj, inPkts, inCount)
 		local ba = ffi.C.HelloBye2_Server_process(obj.obj, inPkts, inCount, obj.sbc,
 		obj.fbc)
 
-		local sendBufs = memory.bufArray(obj.sbc[0])
+		if obj.sbc[0] > obj.sbufsS then
+			obj.sbufs = memory.bufArray(obj.sbc[0])
+			obj.sbufsS = obj.sbc[0]
+		end
 
 		if obj.fbc[0] > obj.fbufsS then
 			obj.fbufs = memory.bufArray(obj.fbc[0])
 			obj.fbufsS = obj.fbc[0]
 		end
 
-		ffi.C.HelloBye2_Server_getPkts(ba, sendBufs.array, obj.fbufs.array)
+		ffi.C.HelloBye2_Server_getPkts(ba, obj.sbufs.array, obj.fbufs.array)
 
-		sendBufs.size = obj.sbc[0]
-		ret.send = sendBufs
+		obj.sbufs.size = obj.sbc[0]
+		ret.send = obj.sbufs
 		ret.sendCount = obj.sbc[0]
 
 		obj.fbufs:freeAll()
