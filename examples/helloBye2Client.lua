@@ -108,7 +108,7 @@ function connector(txQ)
 
 		txQ:sendN(sendBufs, sendBufsCount)
 
-		--lm.sleepMillis(200)
+		--lm.sleepMicros(10)
 	end
 
 	helloBye.free(state)
