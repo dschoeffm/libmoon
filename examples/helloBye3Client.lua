@@ -71,6 +71,7 @@ function connector(txQ)
 	-- TODO why doesn't this work?
 	--local dstIP = utils.parseIP4Address("192.168.0.2")
 	local dstIP = 0xc0a80002
+	local srcIP = parseIP4Address(RX_IP)
 
 	local bSize = 128
 
@@ -82,7 +83,7 @@ function connector(txQ)
 		-- this actually allocates some buffers from the mempool the array is associated with
 		-- this has to be repeated for each send because sending is asynchronous, we cannot reuse the old buffers here
 
-		local curPkts = helloBye.connect(mempool, state, RX_IP, dstIP, 1025, 1337, ident, bSize)
+		local curPkts = helloBye.connect(mempool, state, srcIP, dstIP, 1025, 1337, ident, bSize)
 
 		-- this is 64bit large -> should not wrap around
 		ident = ident + bSize
