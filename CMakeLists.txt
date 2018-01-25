@@ -32,7 +32,7 @@ SET(FILES
 )
 
 SET(DPDK_LIBS
-	rte_net	     rte_ethdev       rte_distributor 	 rte_kni       rte_mbuf       	  rte_pmd_bond         rte_pmd_ring  	rte_power  
+	rte_net	     rte_ethdev       rte_distributor 	 rte_kni       rte_mbuf       	  rte_pmd_bond         rte_pmd_ring  	rte_power
 	rte_acl      rte_eal          rte_kvargs   	 rte_mempool   rte_mempool_ring	  rte_pmd_e1000        rte_pmd_virtio   rte_ring
 	rte_cfgfile  rte_hash         rte_lpm      	 rte_meter     rte_pmd_i40e   	  rte_pmd_vmxnet3_uio  rte_sched        rte_timer
 	rte_cmdline  rte_ip_frag      rte_pipeline 	 rte_pmd_ixgbe rte_mempool_stack  rte_port             rte_table        rte_pmd_bnxt
@@ -100,4 +100,14 @@ ELSE()
 	TARGET_LINK_LIBRARIES(libmoon ${ALL_LIBS})
 ENDIF()
 
-ADD_SUBDIRECTORY(deps/MoonState)
+ADD_SUBDIRECTORY(deps)
+
+add_custom_command(OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/lua/lib/turbo/libtffi_wrap.so
+	PRE_LINK
+	COMMAND $(MAKE) "SSL=none"
+	COMMENT "Building Turbo"
+	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/lua/lib/turbo/
+)
+add_custom_target(Turbo DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/lua/lib/turbo/libtffi_wrap.so)
+
+ADD_DEPENDENCIES(moon LuaJIT DPDK Turbo MoonState)
