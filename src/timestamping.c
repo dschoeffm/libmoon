@@ -3,6 +3,12 @@
 
 #include "device.h"
 
+static int cmp(const void* e1, const void* e2) {
+		int32_t offs1 = *(int32_t*) e1;
+		int32_t offs2 = *(int32_t*) e2;
+		return offs1 < offs2 ? -1 : offs1 > offs2 ? 1 : 0;
+	}
+
 void libmoon_sync_clocks(uint8_t port1, uint8_t port2, uint32_t timl, uint32_t timh, uint32_t adjl, uint32_t adjh) {
 	// resetting SYSTIML twice prevents a race-condition when SYSTIML is just about to overflow into SYSTIMH
 	write_reg32(port1, timl, 0);
@@ -24,15 +30,11 @@ void libmoon_sync_clocks(uint8_t port1, uint8_t port2, uint32_t timl, uint32_t t
 		uint32_t x2 = *port2time;
 		uint32_t y1 = *port2time;
 		uint32_t y2 = *port1time;
-		int32_t delta_t = abs(((int64_t) x1 - x2 - ((int64_t) y2 - y1)) / 2); // time between two reads
+		int32_t delta_t = llabs(((int64_t) x1 - x2 - ((int64_t) y2 - y1)) / 2); // time between two reads
 		int32_t offs = delta_t + x1 - x2;
 		offsets[i] = offs;
 	}
-	int cmp(const void* e1, const void* e2) {
-		int32_t offs1 = *(int32_t*) e1;
-		int32_t offs2 = *(int32_t*) e2;
-		return offs1 < offs2 ? -1 : offs1 > offs2 ? 1 : 0;
-	}
+
 	// use the median offset
 	qsort(offsets, num_runs, sizeof(int32_t), &cmp);
 	int32_t offs = offsets[num_runs / 2];
