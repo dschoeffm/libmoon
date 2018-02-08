@@ -70,7 +70,7 @@ function connector(txQ)
 	local dstIP = 0xc0a80002
 	local srcIP = 0xc1000000
 
-	local state = dtls.init(dstIP, 4433, txQ, dstMac)
+	local state = dtls.init(dstIP, 4433)
 
 	local bSize = 128
 
@@ -119,7 +119,7 @@ function reflector(rxQ, txQ)
 	local bufs = memory.bufArray()
 
 	-- setup state machine for dtls
-	local state = dtls.init(dstIP, 4433, txQ, dstMac)
+	local state = dtls.init(dstIP, 4433)
 
 	while lm.running() do
 		-- receive some packets

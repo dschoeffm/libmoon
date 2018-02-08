@@ -4,7 +4,7 @@ local log = require "log"
 local utils = require "utils"
 
 ffi.cdef[[
-void *DtlsClient_init(uint32_t dstIP, uint16_t dstPort, uint8_t srcMac[6], uint8_t dstMac[6]);
+void *DtlsClient_init(uint32_t dstIP, uint16_t dstPort);
 
 void *DtlsClient_connect(void *obj, struct rte_mbuf **inPkts, unsigned int inCount,
 	unsigned int *sendCount, unsigned int *freeCount, uint32_t srcIP, uint16_t srcPort);
@@ -19,9 +19,9 @@ void DtlsClient_free(void *obj);
 
 local mod = {}
 
-function mod.init(dstIP, dstPort, srcMac, dstMac)
+function mod.init(dstIP, dstPort)
 	ret = {}
-	ret.obj = ffi.C.DtlsClient_init(dstIP, dstPort, srcMac, dstMac)
+	ret.obj = ffi.C.DtlsClient_init(dstIP, dstPort)
 	ret.sbc = ffi.new("unsigned int[1]")
 	ret.fbc = ffi.new("unsigned int[1]")
 	ret.fbufs = memory.bufArray(128)
