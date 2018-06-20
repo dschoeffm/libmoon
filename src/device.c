@@ -14,6 +14,50 @@
 #include "device.h"
 #include "lifecycle.h"
 
+struct measureData {
+	uint64_t openssl;
+	uint64_t denseMap;
+	uint64_t tbb;
+	uint64_t siphash;
+	uint64_t memory;
+	uint64_t numPkts;
+	uint64_t numBytes;
+	uint64_t tx;
+	uint64_t rx;
+};
+
+extern struct measureData measureData;
+
+static union {
+	uint64_t tsc_64;
+	struct {
+		uint32_t lo_32;
+		uint32_t hi_32;
+	};
+} tsc;
+
+inline uint64_t start_measurement(void) {
+
+	asm volatile("CPUID\n\t"
+				 "RDTSC\n\t"
+				 "mov %%edx, %0\n\t"
+				 "mov %%eax, %1\n\t"
+				 : "=r"(tsc.hi_32), "=r"(tsc.lo_32)::"%rax", "%rbx", "%rcx", "%rdx");
+
+	return tsc.tsc_64;
+}
+
+inline uint64_t stop_measurement(void) {
+
+	asm volatile("RDTSCP\n\t"
+				 "mov %%edx, %0\n\t"
+				 "mov %%eax, %1\n\t"
+				 "CPUID\n\t"
+				 : "=r"(tsc.hi_32), "=r"(tsc.lo_32)::"%rax", "%rbx", "%rcx", "%rdx");
+
+	return tsc.tsc_64;
+}
+
 // default descriptors per queue
 #define DEFAULT_RX_DESCS 512
 #define DEFAULT_TX_DESCS 256
@@ -235,7 +279,11 @@ uint32_t dpdk_get_rte_queue_stat_cntrs_num() {
 // the following functions are static inline function in header files
 // this is the easiest/least ugly way to make them available to luajit (#defining static before including the header breaks stuff)
 uint16_t rte_eth_rx_burst_export(uint8_t port_id, uint16_t queue_id, void* rx_pkts, uint16_t nb_pkts) {
-	return rte_eth_rx_burst(port_id, queue_id, rx_pkts, nb_pkts);
+	uint64_t start = start_measurement();
+	uint16_t ret = rte_eth_rx_burst(port_id, queue_id, rx_pkts, nb_pkts);
+	uint64_t stop = stop_measurement();
+	measureData.rx += stop - start;
+	return ret;
 }
 
 uint16_t rte_eth_tx_burst_export(uint8_t port_id, uint16_t queue_id, void* tx_pkts, uint16_t nb_pkts) {
@@ -243,13 +291,22 @@ uint16_t rte_eth_tx_burst_export(uint8_t port_id, uint16_t queue_id, void* tx_pk
 }
 
 void dpdk_send_all_packets(uint8_t port_id, uint16_t queue_id, struct rte_mbuf** pkts, uint16_t num_pkts) {
+	uint64_t start = start_measurement();
+
 	uint32_t sent = 0;
 	while (1) {
 		sent += rte_eth_tx_burst(port_id, queue_id, pkts + sent, num_pkts - sent);
 		if (sent >= num_pkts) {
+			uint64_t stop = stop_measurement();
+			measureData.tx += stop - start;
+
 			return;
 		}
 	}
+
+	uint64_t stop = stop_measurement();
+	measureData.tx += stop - start;
+
 	return;
 }
 
